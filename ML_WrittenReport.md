@@ -201,7 +201,7 @@ The final model was fitted using k=2k=2k=2.
 | Cluster 0 | 164 patients (55.2%) |
 | Cluster 1 | 133 patients (44.8%) |
 
-The clusters are relatively balanced, indicating that the algorithm did not collapse into a dominant group — a desirable property for downstream interpretation.
+The clusters are relatively balanced, indicating that the algorithm did not collapse into a dominant group - a desirable property for downstream interpretation.
 
 ## 5.5 Cluster Visualisation in PCA Space
 
@@ -221,7 +221,7 @@ The projected cluster centroids confirm that separation occurs mainly along this
 
 Cluster centres were analysed in both standardized feature space and original clinical units to enable medical interpretation.
 
-### **Cluster 0 — Lower-Risk Cardiac Profile**
+### **Cluster 0 - Lower-Risk Cardiac Profile**
 
 Key characteristics include:
 
@@ -233,7 +233,7 @@ Key characteristics include:
 
 Overall, this cluster represents patients exhibiting physiological responses consistent with preserved cardiac function.
 
-### Cluster 1 — Higher-Risk Cardiac Profile
+### Cluster 1 - Higher-Risk Cardiac Profile
 
 This cluster demonstrates multiple indicators associated with cardiovascular impairment:
 
