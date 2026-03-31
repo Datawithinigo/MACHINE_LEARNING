@@ -1,0 +1,744 @@
+
+\documentclass[twocolumn, fontsize=10pt]{article}
+
+\raggedbottom
+\setlength{\parskip}{0pt}
+
+\usepackage[margin=0.80in]{geometry}
+\usepackage{lipsum,mwe,abstract}
+\usepackage[T1]{fontenc} 
+\usepackage[english]{babel} 
+\usepackage{fancyhdr}
+\pagestyle{fancyplain}
+\fancyhead{} 
+\fancyfoot[C]{\thepage}
+\setlength\parindent{0pt} 
+\usepackage{booktabs,tabularx,caption,hyperref}
+\usepackage{natbib}
+\usepackage{amsmath,amsfonts,amsthm}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{subcaption}
+\usepackage{comment}
+\usepackage{enumitem}
+\usepackage{cuted}
+\usepackage{booktabs}
+\usepackage{sectsty}
+\usepackage{dblfloatfix}      % lets figure* go at the bottom [b]
+\usepackage{placeins}  % no automatic barriers at \section
+
+% (optional) a little tighter gap above/below wide floats
+
+\setlength{\dbltextfloatsep}{8pt plus 2pt minus 2pt}
+\usepackage{cuted}     % gives the strip environment (full-width block)
+\usepackage{capt-of}   % for \captionof outside figure
+
+
+%\allsectionsfont{\normalfont \normalsize \scshape}
+
+\usepackage{graphicx}
+\usepackage[dvipsnames]{xcolor}
+\renewenvironment{abstract}{
+ {\small
+  \begin{center}
+  \bfseries \abstractname\vspace{-.5em}\vspace{0pt}
+  \end{center}
+  \list{}{\setlength{\leftmargin}{0mm}\setlength{\rightmargin}{\leftmargin}}
+  \item\relax}
+ }{\endlist}
+
+
+\usepackage[]{mdframed}
+\makeatletter
+\renewcommand{\maketitle}{\bgroup\setlength{\parindent}{0pt}
+\begin{flushleft}
+  \@title
+  \@author \\ 
+  \@date
+\end{flushleft}\egroup
+}
+
+\makeatother
+
+% draw a frame around given text
+
+\newcommand{\framedtext}[1]{%
+\par%
+\noindent\fbox{%
+    \parbox{\dimexpr\linewidth-2\fboxsep-2\fboxrule}{#1}%
+}%
+
+}
+% --- R-infographic-aligned palette (steel blue + warm amber + soft neutrals)
+
+\definecolor{RBlue}{HTML}{2E4A7C}        % steel/navy blue (matches the R panels)
+\definecolor{RBlueLight}{HTML}{90AEC1}   % light blue-gray
+\definecolor{RSand}{HTML}{F2CB80}        % pale sand highlight
+\definecolor{RGray}{HTML}{E0E2DC}        % soft light gray
+\definecolor{CodeBG}{HTML}{F7F8FA}       % very light neutral for code background
+
+
+
+% Custom Colors
+
+\definecolor{ElegantNavy}{HTML}{0E2A47} % A deep, dark navy (almost black)
+\definecolor{SteelBlue}{HTML}{4B6E8A}   % A muted, dusty blue
+\definecolor{DeepGrey}{HTML}{333333}    % Standard dark grey
+
+
+\usepackage{tcolorbox}
+\tcbuselibrary{minted,breakable,xparse,skins}
+\usepackage{minted}
+
+% --- Heading palette (matches the R infographics)
+\definecolor{RCharcoal}{HTML}{2B2B2B} % dark neutral like the infographic headers
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=RBlue,
+  citecolor=blue,
+  urlcolor=RBlue
+}
+
+
+% Link the tcolorbox background to our custom palette
+
+\colorlet{bg}{CodeBG}
+\DeclareTCBListing{mintedbox}{O{}m!O{}}{%
+  breakable=true,
+  listing engine=minted,
+  listing only,
+  minted language=#2,
+  minted style=default,
+  minted options={
+    linenos,
+    breaklines=true,
+    fontsize=\small,
+    numbersep=8pt,
+    #1},
+  boxsep=0pt,
+  left=25pt,
+  top=3pt,
+  bottom=3pt,
+  arc=0pt,
+  colback=white,
+  colframe=SteelBlue,
+  boxrule=0pt,
+  leftrule=3pt,
+  enhanced,
+  #3
+}
+
+
+% Make figure/table captions smaller and gray
+\definecolor{captiongray}{gray}{0.35} % tweak 0=black, 1=white
+\captionsetup[figure]{font=small, labelfont={bf,color=captiongray}, textfont={color=captiongray}}
+\captionsetup[table]{font=small,  labelfont={bf,color=captiongray}, textfont={color=captiongray}}
+\captionsetup[subfigure]{font=footnotesize, labelfont={bf,color=captiongray}, textfont={color=captiongray}}
+
+\usepackage[most]{tcolorbox}
+\newtcolorbox{myquote}[1][]{%
+    colback=black!5,
+    colframe=black!5,
+    notitle,
+    borderline west={2pt}{0pt}{RoyalBlue!80!black},
+    enhanced,
+    breakable,
+    }
+
+
+
+
+
+
+% --- FONT SETTINGS ---
+\sectionfont{\color{ElegantNavy}\bfseries\fontsize{11}{13}\selectfont\MakeUppercase}
+\subsectionfont{\color{SteelBlue}\bfseries\fontsize{10}{12}\selectfont}
+\subsubsectionfont{\color{DeepGrey}\bfseries\fontsize{9}{11}\selectfont}
+%% ------------------------------------------------------------------- 
+\title{
+\Large
+\centering
+\textbf{Clustering Patient Data: A Comparative Analysis} \\
+[8pt]
+\Large \textcolor{RCharcoal}{Machine Learning, Assignment 1, Unsupervised Learning Methods} \\[10pt]}
+\date{\today}
+\author{{\normalsize Iñigo Arriazu García, Laia Colomé Xicoy, Andrea Pérez Valle, Joana Ros Alonso, Gabriel Torres Zamora }}
+
+\begin{document}
+\twocolumn[ \maketitle ]
+
+
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Introduction}
+\label{sec:intro}
+
+ {Unsupervised learning} encompasses a family of machine learning (ML) techniques that discover hidden patterns in data without relying on labelled outcomes \citep{hastie2009elements}. Unlike supervised approaches, unsupervised algorithms must infer meaningful structure purely from the geometry of the input space, making them particularly valuable in settings where acquiring ground-truth labels is expensive, time-consuming, or fundamentally impossible.
+
+
+Clustering is among the most prominent unsupervised techniques. Its primary objective is to partition a dataset into distinct subgroups such that intra-cluster similarity is maximised and inter-cluster similarity is minimised \citep{jain2010data}. In healthcare, clustering is frequently applied to patient stratification. By grouping patients based solely on physiological measurements, researchers can identify high-risk profiles before a formal clinical diagnosis is established \citep{DeBenedictis2024, Hartung2024}.
+
+There is no universally superior clustering algorithm, as different methods make different assumptions about the shape and distribution of the data \citep{bishop2006pattern}. To better understand patterns in the clinical data, this assignment compares three distinct algorithmic approaches:  {K-Means Clustering},  {Gaussian Mixture Models} and  {Hierarchical Clustering}
+
+These methods are applied to the  {\textit{UCI Heart Disease}} dataset. The target diagnostic label is treated as hidden throughout the clustering process and revealed only for evaluation, mirroring the real-world challenge of identifying patient profiles from clinical measurements alone. Plus, to prevent unintentional bias the assignment workload was deliberately divided so the members responsible for developing and tuning the models did not see the ground truth diagnostic labels until the shared discussion.
+
+
+
+
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Materials and Methods}
+\label{sec:methods}
+
+\subsection{Dataset}
+
+The study uses the  {\textit{Heart Disease dataset}} from the  {\textit{UCI Machine Learning Repository}}, specifically the \texttt{processed.cleveland.data} subset \citep{detrano1989international}.
+The dataset comprises 303 patient records with 13 clinical features and one target variable (\texttt{num}), which indicates the angiographic disease status (0 = no significant narrowing; 1--4 = disease present). The target was binarised as 0 vs.\ 1+ for all evaluation steps. The 13 features span demographic information (\texttt{age}, \texttt{sex}), resting measurements (\texttt{trestbps}, \texttt{chol}, \texttt{fbs}, \texttt{restecg}), exercise stress test results (\texttt{thalach}, \texttt{exang}, \texttt{oldpeak}, \texttt{slope}), and diagnostic test results (\texttt{ca}, \texttt{thal}, \texttt{cp}).
+
+\subsection{Exploratory Data Analysis}
+
+Initial inspection revealed a near-symmetric age distribution centred at 54.4 years, with a notable sex imbalance (68\% male). The cohort presents elevated cardiovascular risk factors overall: mean resting blood pressure of 131.7 mmHg (Stage 1 hypertension) and mean serum cholesterol of 246.7 mg/dl (borderline high). Features \texttt{oldpeak} (skewness = 1.241), \texttt{ca} (skewness = 1.174), and \texttt{chol} exhibit pronounced right-skewed distributions, while \texttt{thalach} is moderately left-skewed.
+
+\begin{figure*}[ht] % or [!b] for bottom
+    \centering
+    \includegraphics[width=\textwidth]{fig_distributions.png}
+    \caption{Frequency distributions of continuous features. Left to right:
+    \texttt{age}, \texttt{trestbps}, \texttt{chol}, \texttt{thalach}, and
+    \texttt{oldpeak}. Dashed lines indicate the mean; dotted lines the median.
+    The distributions of \texttt{chol} and \texttt{oldpeak} are right-skewed,
+    whereas \texttt{age} is near-symmetric.}
+    \label{fig:distributions}
+\end{figure*}
+
+The distribution of categorical features (Figure~\ref{fig:cat_distributions}) 
+reveals important class imbalances that have direct implications for the 
+subsequent feature selection step. While most features show adequate 
+representation across categories, several are critically underrepresented: 
+ST-T wave abnormality on resting ECG (\texttt{restecg}=1) affects only 4 
+patients ($<$2\%), fixed thalassemia defect (\texttt{thal}=6) only 18 patients 
+(6\%), and typical angina (\texttt{cp}=1) only 23 patients (8\%). At these 
+frequencies, no statistical filter method can reliably distinguish a true 
+discriminative signal from random variation, making these categories 
+statistically underpowered candidates for exclusion regardless of the 
+selection method applied.
+
+\begin{figure*}[ht] % or [!b] for bottom
+    \centering
+    \includegraphics[width=0.9\linewidth]{fig_categorical_distributions.png}
+    \caption{Frequency distributions of non-continuous features.
+    Several categories are notably underrepresented: typical angina (\texttt{cp}=1,
+    $n=23$, 8\%), fixed thalassemia defect (\texttt{thal}=6, $n=18$, 6\%),
+    downsloping ST segment (\texttt{slope}=3, $n=21$, 7\%), and ST-T wave
+    abnormality on resting ECG (\texttt{restecg}=1, $n=4$, $<$2\%). These rare
+    categories carry limited statistical power and were subsequently removed
+    during feature selection.}
+    \label{fig:cat_distributions}
+\end{figure*}
+
+Only six records contained missing values, isolated to \texttt{ca} (4 entries, 1.32\%) and \texttt{thal} (2 entries, 0.66\%). Given that this represents less than 2\% of observations,  {listwise deletion} was employed. This approach introduces no meaningful loss of statistical power and avoids introducing artificial bias by imputing sensitive categorical clinical variables \citep{schafer2002missing}. The final working dataset comprised 297 valid observations, with a moderately balanced target distribution (54\% no disease, 46\% disease). 
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\linewidth]{fig_correlation.png}
+    \caption{Pearson correlation heatmap across all 13 features. Black borders denote pairs with $|r| \geq 0.4$. The strongest correlation is \texttt{oldpeak}--\texttt{slope} ($r = 0.58$). \texttt{thalach} shows consistent negative correlations with age ($r = -0.40$) and exercise stress markers.}
+    \label{fig:correlation}
+\end{figure}
+
+The correlation analysis (Figure~\ref{fig:correlation}) revealed that the strongest pairwise correlation is between \texttt{oldpeak} and \texttt{slope} ($r = 0.58$), consistent with their shared physiological meaning as exercise ECG stress markers. \texttt{thalach} shows negative correlations with \texttt{age} ($r = -0.40$), \texttt{exang} ($r = -0.38$), and \texttt{oldpeak} ($r = -0.34$), reflecting the expected relationship between age, symptoms, and reduced cardiovascular capacity. Conversely, \texttt{fbs} and \texttt{restecg} show near-zero correlations with almost all other features.
+
+\subsection{Preprocessing and Feature Engineering}
+
+\subsubsection{Feature Encoding}
+
+Features were classified into three groups and treated accordingly.  {Nominal
+features} (\texttt{cp}, \texttt{restecg}, \texttt{thal}) were one-hot encoded with \texttt{drop\_first=False}, expanding the feature space from 13 to 20 columns. All dummy columns were retained on purpose, despite the implied multicollinearity (dummy variable trap), to avoid unnecessary information loss if categories were removed both during encoding and later feature selection. This was acknowledged during PCA and resolved in feature selection.  {Ordinal features}
+(\texttt{slope}, \texttt{ca}) were retained as integers, preserving their
+clinical ordering.  {Binary features} (\texttt{sex}, \texttt{fbs},
+\texttt{exang}) were kept on their 0/1 form.
+
+\subsubsection{Feature Scaling}
+
+\texttt{StandardScaler} was applied selectively to continuous and ordinal features only
+(\texttt{age}, \texttt{trestbps}, \texttt{chol}, \texttt{thalach},
+\texttt{oldpeak}, \texttt{slope}, \texttt{ca}). Binary and one-hot encoded
+features were intentionally excluded from scaling. \texttt{MinMaxScaler} was explicitly
+discarded: given the pronounced right-skewed outliers in \texttt{oldpeak} and
+\texttt{chol}, it would compress the majority of patients into a narrow band near
+zero, destroying discriminative information. \texttt{StandardScaler} handles this better,
+as outliers become large z-scores but the bulk of the distribution retains its
+spread \citep{hastie2009elements}.
+
+
+
+\subsubsection{Dimensionality Analysis: PCA}
+
+PCA was applied to the fully scaled dataset for variance analysis and visualisation only. The explained variance analysis revealed that the dataset's information is broadly distributed rather than concentrated in a few clinical drivers: PC1 accounts for 27.64\% of the variance, and PC2 accounts for 13.99\%.  {Nine principal components are required to capture at least 85\% of total variance} (cumulative: 88.76\%).
+Components PC18--20 contribute exactly 0\%, an expected consequence of one-hot encoding with \texttt{drop\_first=False}.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\linewidth]{fig_pca_variance.png}
+    \caption{Per-component variance (darker bars indicate components retained to reach the 85\% threshold at PC9).}
+    \label{fig:pca_variance}
+\end{figure}
+
+
+PC1 is dominated by five continuous features: \texttt{oldpeak}, \texttt{thalach}, \texttt{slope}, \texttt{age}, and \texttt{ca}, all with absolute loadings above 0.35. Because these variables are linked to the physiological response to exercise, PC1 effectively represents a patient's  {cardiac stress profile}. It explains the most variance ($\approx$27.6\%). PC2 ($\approx$14.0\% variance) is shaped primarily by \texttt{chol} (0.575), \texttt{age} (0.415), \texttt{trestbps} (0.381), and \texttt{slope} (-0.397), capturing a mix of demographic and baseline resting measurements.
+
+Finally, it is worth noting that binary and one-hot encoded features (\texttt{cp\_*}, \texttt{restecg\_*}, \texttt{sex}...) show consistently small loadingsas a direct, intended consequence of the chosen selective scaling strategy.
+
+\subsubsection{Feature Selection: Hybrid Voting Strategy}
+
+To reduce the 20-dimensional encoded space to a clinically interpretable and noise-reduced subset, a supervised hybrid majority voting strategy was applied. The dataset was first split into training (80\%) and test (20\%) sets, stratified by disease status, and the \texttt{StandardScaler} was refitted exclusively on the training data to prevent leakage. Three methods were then applied to the training set:
+
+\begin{enumerate}[noitemsep]
+    \item \textbf{ANOVA F-test:} univariate filter selecting features with statistically significant mean differences between classes ($p < 0.05$).
+    \item \textbf{ReliefF:} multivariate filter scoring features by their ability to distinguish nearby patients from different classes, capturing local neighbourhood structure and interactions.
+    \item \textbf{mRMR (Minimum Redundancy Maximum Relevance):} multivariate filter selecting the top 10 features that maximise relevance to the target while minimising inter-feature redundancy.
+\end{enumerate}
+
+A feature was retained if selected by  {at least 2 out of 3 methods}. This voting rule removes subjectivity and ensures only features with broad cross-method support enter the clustering pipeline. Five features were dropped:
+\texttt{fbs} (0/3 votes), \texttt{chol} (1/3), \texttt{cp\_1} (1/3), \texttt{thal\_6.0} (1/3), and \texttt{restecg\_1} (1/3). The final clustering matrix comprised  {297 patients $\times$ 15 features}.
+
+
+\section{Clustering Methods}
+
+The three algorithms selected for this assignment differ fundamentally in 
+their underlying assumptions about cluster shape, assignment type, and 
+data-generating processes. Table~\ref{tab:method_comparison} summarises 
+their key structural properties.
+
+\subsection{K-Means Clustering}
+K-Means partitions $n$ observations into $k$ mutually exclusive clusters 
+by minimising the within-cluster sum of squared Euclidean distances, with 
+each cluster represented by the mean position of its assigned observations 
+\citep{macqueen1967methods}. The algorithm iterates between assigning each 
+observation to its nearest centroid and recomputing centroids until 
+convergence. Its core assumption is that clusters are convex, spherical, 
+and similarly sized in Euclidean space \citep{bishop2006pattern}. The 
+number of clusters $k$ must be specified in advance, results are sensitive 
+to initialisation, and hard assignment may artificially sharpen an 
+inherently gradual boundary. In this dataset, the roughly balanced class 
+distribution (54\%/46\%) and predominantly linear separation along the 
+cardiac stress axis are broadly consistent with these assumptions, making 
+K-Means a reasonable baseline.
+
+\subsection{Hierarchical Clustering}
+Agglomerative hierarchical clustering follows a bottom-up approach: each 
+patient begins as its own cluster, and pairs are progressively merged 
+according to a linkage criterion until a single cluster remains, producing 
+a dendrogram encoding the full nested structure \citep{jain1999data}. 
+Unlike K-Means, it requires no pre-specification of $k$, the number of 
+clusters is chosen by cutting the dendrogram at a selected 
+height, and imposes no assumption on cluster shape \citep{bishop2006pattern}. 
+However, merges are irreversible, so early errors may propagate through 
+the hierarchy. It is also the most computationally expensive of the three 
+methods, scaling quadratically, which makes it impractical for large clinical databases. Two linkage criteria were evaluated:  {Ward}, which minimises the increase in within-cluster variance at each merge producing compact, balanced clusters, and  {Complete}, which uses the maximum pairwise distance between 
+clusters, producing tighter but more fragmented dendrograms.
+
+\subsection{Gaussian Mixture Models}
+GMM assumes the data arise from a mixture of $k$ Gaussian distributions, 
+each characterised by a mean vector $\boldsymbol{\mu}_k$, a covariance 
+matrix $\boldsymbol{\Sigma}_k$, and a mixing coefficient $\pi_k$ 
+\citep{reynolds2009gaussian}:
+%
+\begin{equation}
+    p(\mathbf{x}) = \sum_{k=1}^{K} \pi_k \,\mathcal{N}(\mathbf{x} \mid 
+    \boldsymbol{\mu}_k,\, \boldsymbol{\Sigma}_k)
+\end{equation}
+%
+Parameters are estimated via the Expectation-Maximisation (EM) algorithm, 
+alternating between computing soft cluster membership probabilities 
+(E-step) and updating parameters to maximise data likelihood (M-step) 
+\citep{bishop2006pattern}. The soft assignments are the method's primary 
+clinical advantage, enabling explicit uncertainty quantification per 
+patient. Full covariance matrices additionally allow GMM to capture 
+elliptical clusters of varying orientations that K-Means cannot. Model 
+selection is performed via BIC and AIC \citep{hastie2009elements}. The 
+central limitation here is the small sample size ($n = 297$), which 
+increases the risk of overfitting under full-covariance parameterisation.
+
+\begin{table}[H]
+\centering
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Property} & \textbf{K-Means} & \textbf{Hierarchical} & \textbf{GMM} \\
+\midrule
+Cluster shape    & Spherical    & No assumption      & Elliptical ($\boldsymbol{\Sigma}$) \\
+$k$ required     & Yes          & No (post-hoc cut)  & Yes \\
+Assignment       & Hard         & Hard               & Soft \\
+Scalability      & Good         & Poor               & Good \\
+Reversible       & Yes          & No                 & Yes \\
+Outlier robust   & Low          & Moderate           & Low \\
+\bottomrule
+\end{tabular}
+\caption{Structural comparison of the three clustering methods 
+\citep{jain1999data, bishop2006pattern}.}
+\label{tab:method_comparison}
+\end{table}
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Results}
+\label{sec:results}
+
+All three clustering algorithms were applied to the same final 15-feature matrix,
+scaled using the \texttt{StandardScaler} fitted exclusively on the training set.
+The diagnostic label was not used at any point during this process, keeping the
+analysis fully unsupervised.
+
+\subsection{K-Means Clustering}
+
+\texttt{K-Means} was evaluated across $k = 2$ to $10$ using the  {Elbow Method} (inertia) and  {Silhouette Score}. The inertia curve showed a smooth decline with no sharp elbow, typical of overlapping clinical data. The most significant drop occurred between $k=2$ and $k=3$. The Silhouette Score was maximised at $k=2$
+(score = 0.2025), dropping sharply for all higher values.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\linewidth]{fig_kmeans_selection.png}
+    \caption{K-Means model selection. \textit{Top:} Elbow Method decreases smoothly with no sharp elbow, with the greatest gain between $k=2$ and $k=3$. \textit{Below:} Silhouette Score, maximised at $k=2$ (0.2025). Both criteria consistently support $k=2$.}
+    \label{fig:kmeans_selection}
+\end{figure}
+
+The final model ($k=2$, inertia = 1868.87) produced a roughly balanced partition: Cluster~0 with 164 patients (55.2\%) and Cluster~1 with 133 patients (44.8\%). Cluster centres (Table~\ref{tab:kmeans_profiles})
+reveal a clinically coherent separation along the cardiac stress axis. Cluster~1 is characterised by elevated \texttt{oldpeak}, reduced \texttt{thalach}, and a higher prevalence of downsloping ST segments and asymptomatic chest pain. Taken together these features suggest a higher-risk cardiac stress profile. Cluster~0 presents the complementary low-risk profile with predominantly normal thalassemia and resting ECG results.
+
+
+\begin{table}[H]
+\centering
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lrlr}
+\toprule
+\multicolumn{2}{c}{\textbf{Low-risk}} & 
+\multicolumn{2}{c}{\textbf{High-risk}} \\
+\cmidrule(lr){1-2}\cmidrule(lr){3-4}
+\textbf{Feature} & \textbf{z} & 
+\textbf{Feature} & \textbf{z} \\
+\midrule
+\texttt{thal\_3.0}  & +0.73 & \texttt{thalach}    & $-$0.74 \\
+\texttt{sex}        & +0.62 & \texttt{sex}        & +0.74 \\
+\texttt{restecg\_0} & +0.61 & \texttt{cp\_4}      & +0.71 \\
+\texttt{thalach}    & +0.58 & \texttt{slope}      & +0.70 \\
+\texttt{oldpeak}    & $-$0.54 & \texttt{oldpeak}  & +0.65 \\
+\bottomrule
+\end{tabular}
+\caption{K-Means: five features with the highest absolute cluster centre value per risk profile.}
+\label{tab:kmeans_profiles}
+\end{table}
+
+
+
+\subsection{Gaussian Mixture Models}
+GMM was evaluated across $k = 2$ to $10$ components using  {Bayesian Information Criterion (BIC)} and  {Akaike Information Criterion (AIC)}. Both criteria penalise model complexity to prevent overfitting, with BIC applying a stronger penalty and therefore favouring simpler models \citep{hastie2009elements}. Lower values indicate better fit.
+
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\linewidth]{fig_gmm_selection.png}
+    \caption{GMM model selection. \textit{Top:} BIC becomes increasingly negative (better) from $k=3$ to $k=4$,
+    reaching a global minimum at $k=4$ (BIC $\approx -4267$), before deteriorating
+    at higher $k$. \textit{Bellow:} AIC reaches its minimum at $k=10$ (AIC $\approx
+    -7586$), favouring more complex models due to its lighter penalty. The largest
+    drop in AIC occurs between $k=2$ and $k=3$ ($\Delta$AIC $\approx -6342$), after which
+    improvements continue with diminishing returns.}
+    \label{fig:gmm_selection}
+\end{figure}
+
+BIC's heavier complexity penalty favours simpler models, making the $k=2$ local minimum often preferred in medical applications to avoid overfitting on small datasets. When BIC and AIC disagree, BIC is typically preferred for small medical datasets where overfitting risk exceeds underfitting risk.
+\begin{table}[H]
+\centering
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lrlr}
+\toprule
+\multicolumn{2}{c}{\textbf{Low-risk}} & 
+\multicolumn{2}{c}{\textbf{High-risk}} \\
+\cmidrule(lr){1-2}\cmidrule(lr){3-4}
+\textbf{Feature} & \textbf{z} & 
+\textbf{Feature} & \textbf{z} \\
+\midrule
+\texttt{sex}        & +0.67 & \texttt{thalach}    & $-$0.75 \\
+\texttt{thal\_3.0}  & +0.59 & \texttt{sex}        & +0.81 \\
+\texttt{restecg\_0} & +0.51 & \texttt{slope}      & +0.75 \\
+\texttt{restecg\_2} & +0.49 & \texttt{cp\_4}      & +0.67 \\
+\texttt{oldpeak}    & $-$0.04 & \texttt{exang}    & +0.48 \\
+\bottomrule
+\end{tabular}
+\caption{GMM: five features with the highest absolute cluster centre
+value per risk profile.}
+\label{tab:gmm_profiles}
+\end{table}
+
+
+
+\subsection{Hierarchical Clustering}
+
+Agglomerative hierarchical clustering was computed using Ward and Complete linkage methods and compared via their dendrograms.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\linewidth]{fig_dendrograms.png}
+    \caption{Dendrogram comparison. \textit{Top:} Ward linkage, a large gap
+    between the final merge ($\approx$29) and preceding merges ($\approx$17) clearly
+    indicates two natural patient groups. \textit{Bottom:} Complete linkage, more
+    fragmented structure with uniform merge distances, making the cut point harder
+    to identify visually. Both methods suggest $k=2$.}
+    \label{fig:dendrograms}
+\end{figure}
+
+The Ward dendrogram revealed a notably clear structure: a large gap between the
+final merge (height $\approx$ 29) and all preceding merges (height $\approx$ 17)
+strongly indicates two natural patient groups. The Complete linkage dendrogram was
+more fragmented, with smaller and more uniform merge distances, a pattern typical
+of this more conservative linkage criterion. Both methods suggest $k=2$; Ward was
+selected as the preferred method based on its clearer visual justification and
+well-established suitability for standardised clinical data.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth]{fig_dendogram_cut.png}
+    \caption{Ward dendrogram with the selected cut point at merge distance = 22
+    (dashed line), positioned within the largest merge gap and yielding $k=2$
+    clusters. Branches are coloured by cluster membership below the cut.}
+    \label{fig:dendrogram_cut}
+\end{figure}
+
+The cut was placed at merge distance = 22, confirmed quantitatively by silhouette
+scores: $k=2$ (0.1821) substantially outperformed $k=3$ (0.0956) and $k=4$ (0.11039).
+The resulting clusters produced 206 patients in Cluster~0 and 91 in Cluster~1.
+Cluster~0 (high-risk) is characterised by elevated \texttt{oldpeak}, reduced
+\texttt{thalach}, more narrowed vessels (\texttt{ca}), and a higher prevalence of
+reversible perfusion defects (\texttt{thal\_7.0}). Cluster~1 (low-risk) presents
+the complementary profile with predominantly normal thallium scans and higher
+maximum heart rates.
+
+\begin{table}[H]
+\centering
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lrlr}
+\toprule
+\multicolumn{2}{c}{\textbf{Low-risk}} & 
+\multicolumn{2}{c}{\textbf{High-risk}} \\
+\cmidrule(lr){1-2}\cmidrule(lr){3-4}
+\textbf{Feature} & \textbf{z} & 
+\textbf{Feature} & \textbf{z} \\
+\midrule
+\texttt{thal\_3.0}  & +0.67 & \texttt{thalach}    & $-$1.02 \\
+\texttt{sex}        & +0.64 & \texttt{oldpeak}    & +0.82 \\
+\texttt{restecg\_0} & +0.55 & \texttt{sex}        & +0.76 \\
+\texttt{restecg\_2} & +0.45 & \texttt{cp\_4}      & +0.73 \\
+\texttt{thalach}    & +0.43 & \texttt{ca}         & +0.69 \\
+\bottomrule
+\end{tabular}
+\caption{Hierarchical clustering: five features with the highest absolute
+cluster centre value per risk profile.}
+\label{tab:hier_profiles}
+\end{table}
+
+\subsection{Evaluation Against Ground Truth}
+
+The target variable was revealed and all three methods evaluated using the Adjusted
+Rand Index (ARI) and classification metrics derived from treating cluster
+assignments as binary predictions.
+
+ARI is used as the primary evaluation metric throughout, as it is label-permutation invariant and corrects for chance agreement, both 
+essential properties when evaluating unsupervised partitions against a ground truth \citep{hubert1985comparing}. Precision, Recall and F1 
+are reported as secondary metrics to characterise the clinical sensitivity/specificity tradeoff of each method.
+
+\begin{figure*}[!b]
+    \centering
+    \includegraphics[width=\linewidth]{fig_pca_comparison.png}
+    \caption{PCA 2D projections ($2 \times 2$ grid). \textit{Top left:} ground
+    truth labels. \textit{Top right:} K-Means assignments. \textit{Bottom left:}
+    GMM assignments. \textit{Bottom right:} Hierarchical (Ward) assignments.
+    Separation is consistent along PC1 (cardiac stress axis) across all methods.}
+    \label{fig:pca_comparison}
+\end{figure*}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\linewidth]{fig_confusion.png}
+    \caption{Confusion matrices showing cluster-to-ground-truth mappings
+    for all three methods. K-Means shows the clearest diagonal dominance, with
+    Cluster~0 predominantly no-disease (130/164 = 79\%) and Cluster~1 predominantly disease (103/133 = 77\%).}
+    \label{fig:confusion}
+\end{figure}
+
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Method} & \textbf{ARI} & \textbf{Precision} &
+\textbf{Recall} & \textbf{F1} \\
+\midrule
+K-Means             & \textbf{0.321} & 0.774 & 0.752 & 0.763 \\
+Hierarchical        & 0.174          & 0.780 & 0.518 & 0.623 \\
+GMM                 & 0.010          & 0.667 & 0.102 & 0.177 \\
+\bottomrule
+\end{tabular}
+\caption{Evaluation metrics for all three clustering methods.}
+\end{table}
+
+To complement individual evaluations, we computed pairwise and overall agreement across the three clustering solutions. This assesses whether the methods converge on a similar partition structure independently of the ground truth, offering further insight into the stability and consistency of the identified patient groupings.
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{lc}
+\toprule
+\textbf{Methods Compared} & \textbf{Agreement} \\
+\midrule
+\textbf{Pairwise Agreement} & \\
+K-Means vs. GMM          & 59.6\% \\
+K-Means vs. Hierarchical & 80.5\% \\
+GMM vs. Hierarchical     & 71.0\% \\
+\midrule
+\textbf{Overall Agreement} & \\
+All three methods agree  & 55.6 \% \\
+\bottomrule
+\end{tabular}
+\caption{Pairwise and overall agreement across the three clustering methods.}
+\label{tab:method_agreement}
+\end{table}
+
+
+\section{Discussion}
+\label{sec:discussion}
+
+\subsection{Feature Importance}
+
+On the z-score comparison tables, for each method, we noticed that \texttt{sex} appears among the top discriminating features in \textit{both} risk profiles with the same sign ($+$). Therefore, this does not reflect a genuine clinical signal but rather the dataset's overall male predominance (68\%), which propagates into both clusters regardless of risk level.
+
+\subsection{Algorithm Performance Comparison}
+
+The evaluation integrates the aforementioned metrics: ARI for ground-truth agreement, confusion matrices for cluster mapping, classification metrics for sensitivity-specificity tradeoffs, and pairwise indices for structural consistency. The modest ARI scores (max 0.321) suggest that the transition between diseased and non-diseased states is continuous rather than binary, reflecting the inherent heterogeneity of cardiovascular disease.
+
+Particularly,  {K-Means} performed best overall (ARI = 0.321). Its core assumption of spherical, similarly sized clusters aligned well with the actual data geometry: the true classes are roughly balanced (54\%/46\%), which closely mirrors the true class distribution, and the cluster boundary captures the main discriminating direction.
+
+ {Hierarchical clustering} achieved intermediate performance (ARI = 0.174). Its split ($\approx$69\%/31\%) yields higher precision for the disease class (0.780) at the cost of recall (0.518); it identifies high-risk patients with greater confidence but misses roughly half of them.
+
+ {GMM} produced the lowest ARI (0.010), essentially random. Its extreme imbalance (93\%/7\%) indicates that it identified a different structure: a subgroup of 21 patients rather than the broad disease/no-disease partition. 
+
+
+
+
+\subsection{Reflections and Limitations}
+
+The modest ARI scores ($0.010$ to $0.322$) reflect a biological reality where heart disease exists on a clinical spectrum rather than as a binary state. This is evidenced by overlapping features in the dataset and the PCA finding that nine components are required to explain 85\% of the variance. This distribution indicates that the data lacks a dominant structure for clean separation. Consequently, the ability of K-Means to recover a moderate signal in an unsupervised context represents a meaningful result despite the inherent noise.
+
+Another limitation is the small sample size ($n = 297$), which constrains the statistical power of all three filter methods during feature selection and increases the risk of overfitting, particularly in GMM's full-covariance parameterisation. 
+
+With more time, a deeper exploration of feature distributions would have been desirable. Beyond 2D visualisation, incorporating a third axis or applying alternative dimensionality reduction and visualisation techniques could provide a more comprehensive representation of the data structure, given that PC1 and PC2 capture only $\sim$41.6\% of the total variance.
+
+Additionally, a bootstrap-based cluster stability analysis would be valuable to assess the robustness of the identified clusters. Repeating the clustering process across multiple resampled datasets would help determine whether the observed partitions reflect intrinsic data structure or are driven by algorithmic variability.
+
+
+Finally, although the results are promising within this dataset, their generalisability remains uncertain. The UCI Heart Disease dataset may be subject to selection bias and may not fully represent the diversity of real-world patient populations. In a real-world setting, it would therefore be essential to validate the models on independent cohorts from different geographical regions and healthcare systems to ensure their robustness and broader clinical applicability.
+
+% ────────────────────────────────────────────────────
+\section{Conclusions}
+\label{sec:conclusions}
+
+This study applied three unsupervised clustering algorithms: K-Means, GMM, and Hierarchical Clustering, to the UCI Heart Disease dataset. All three methods consistently identified the cardiac stress axis as the primary dimension separating patient profiles.
+
+K-Means achieved the strongest alignment with the clinical ground truth, benefiting from the roughly balanced and linearly separable structure of the data. Hierarchical clustering offered higher precision at the cost of recall, and provided a visual a priori justification for cluster selection via the dendrogram. GMM identified a clinically distinct severe subgroup but failed to discriminate it properly.
+
+These results demonstrate that unsupervised clustering can meaningfully recover clinically relevant structure from unlabelled physiological data, even in the presence of biological heterogeneity and feature overlap. 
+
+In this binarized scenario, K-Means outperformed the other two methods.
+However, if the target variable were stratified and the analysis repeated, it would be possible to see whether the other two methods capture a narrower subset of patients within one of those strats. Therefore, in that context, the choice of clustering algorithm should be guided by the specific clinical objective: K-Means for balanced risk stratification, hierarchical clustering for interpretable taxonomy, and GMM for soft assignments and rare-subgroup detection.
+
+
+
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section*{AI Usage}
+For this assignment, we used AI tools to help optimize and elaborate our code and improve the overall structure and flow of the text. That said, all the core decisions and analytical approaches are our own, based primarily on the class materials and literature.
+
+%─────────────────────────────────────────────────────────────────────────────
+\bibliographystyle{plainnat}
+\begin{thebibliography}{99}
+
+
+\bibitem[Bishop(2006)]{bishop2006pattern}
+Bishop, C.~M. (2006).
+\newblock \textit{Pattern Recognition and Machine Learning}.
+\newblock Springer.
+
+\bibitem[De~Benedictis et~al.(2024)]{DeBenedictis2024}
+De~Benedictis, A., et~al. (2024).
+\newblock Unsupervised learning for patient stratification in cardiovascular
+disease: a systematic review.
+\newblock \textit{Journal of Biomedical Informatics}, 152, 104612.
+
+\bibitem[Detrano et~al.(1989)]{detrano1989international}
+Detrano, R., et~al. (1989).
+\newblock International application of a new probability algorithm for the
+diagnosis of coronary artery disease.
+\newblock \textit{The American Journal of Cardiology}, 64(5), 304--310.
+
+\bibitem[Hartung et~al.(2024)]{Hartung2024}
+Hartung, J., et~al. (2024).
+\newblock Computational phenotyping in clinical cohorts: methods and applications.
+\newblock \textit{NPJ Digital Medicine}, 7, 45.
+
+\bibitem[Hastie et~al.(2009)]{hastie2009elements}
+Hastie, T., Tibshirani, R., \& Friedman, J. (2009).
+\newblock \textit{The Elements of Statistical Learning} (2nd ed.).
+\newblock Springer.
+
+\bibitem[Hubert \& Arabie(1985)]{hubert1985comparing}
+Hubert, L., \& Arabie, P. (1985).
+\newblock Comparing partitions.
+\newblock \textit{Journal of Classification}, 2(1), 193--218.
+
+\bibitem[Jain et~al.(1999)]{jain1999data}
+Jain, A.~K., Murty, M.~N., \& Flynn, P.~J. (1999).
+\newblock Data clustering: a review.
+\newblock \textit{ACM Computing Surveys (CSUR)}, 31(3), 264--323.
+
+\bibitem[Jain(2010)]{jain2010data}
+Jain, A.~K. (2010).
+\newblock Data clustering: 50 years beyond K-means.
+\newblock \textit{Pattern Recognition Letters}, 31(8), 651--666.
+
+\bibitem[MacQueen(1967)]{macqueen1967methods}
+MacQueen, J. (1967).
+\newblock Some methods for classification and analysis of multivariate
+observations.
+\newblock \textit{Proceedings of the 5th Berkeley Symposium on Mathematical
+Statistics and Probability}, 1, 281--297.
+
+\bibitem[National Cholesterol Education Program(2002)]{NCEP2002}
+National Cholesterol Education Program. (2002).
+\newblock Third report of the expert panel on detection, evaluation, and
+treatment of high blood cholesterol in adults (ATP III).
+\newblock \textit{NIH Publication}, 02-5215.
+
+\bibitem[Reynolds(2009)]{reynolds2009gaussian}
+Reynolds, D.~A. (2009).
+\newblock Gaussian mixture models.
+\newblock \textit{Encyclopedia of Biometrics}, 741--749.
+
+\bibitem[Schafer \& Graham(2002)]{schafer2002missing}
+Schafer, J.~L., \& Graham, J.~W. (2002).
+\newblock Missing data: Our view of the state of the art.
+\newblock \textit{Psychological Methods}, 7(2), 147--177.
+
+\bibitem[Whelton et~al.(2018)]{whelton2018acc}
+Whelton, P.~K., et~al. (2018).
+\newblock 2017 ACC/AHA hypertension guidelines.
+\newblock \textit{Journal of the American College of Cardiology}, 71(19),
+e127--e248.
+
+
+\end{thebibliography}
+
+
+
+
+
+\end{document}

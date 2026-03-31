@@ -109,7 +109,7 @@ plt.savefig(os.path.join(img_dir, 'task4_01_bic_aic.png'), dpi=300, bbox_inches=
 #  plt.show()
 
 # ── Step 3: Refit the final GMM with chosen k ─────────────────────────────
-k_opt = 2   # BIC/AIC both suggest k=2 as optimal
+k_opt = 2   # BIC/AIC differences, we selected k=2 as optimal
 
 gmm_final = GaussianMixture(
     n_components=k_opt,

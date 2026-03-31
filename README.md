@@ -1,3 +1,4 @@
+# P1: Assigment 1: Unsupervised Learning Methods
 
 ## Required Python Libraries
 
@@ -25,3 +26,5 @@ ssl._create_default_https_context = ssl._create_unverified_context
 
 
 
+for creating the reporting: 
+https://prism.openai.com/?u=667b8e68-9a44-4942-b97f-42e516794f5d&pg=1&m=main.tex
