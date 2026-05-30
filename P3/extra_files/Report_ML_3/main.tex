@@ -300,17 +300,6 @@ The Pearson correlation heatmap (Figure~\ref{fig:heatmap}) shows that the strong
 
 Each record is split temporally: beats are sorted by position and the first 80\% go to training ($n = 24{,}124$), the last 20\% to test ($n = 6{,}038$). The cut is applied independently per record. This eliminates window-overlap leakage: with a stride-1 sliding window of $T=10$ beats, two consecutive beats share 9 out of 10 beats in their windows, so a random shuffle would place nearly identical windows in both train and test. A temporal boundary guarantees no window straddles the split. Because the split is not stratified, class proportions differ slightly between splits (Table~\ref{tab:split_balance}).
 
-\begin{mintedbox}{python}
-for rec_id in RECORDS:
-    mask = df_features['record_id'].values == rec_id
-    X_rec, y_rec = X_raw[mask], y[mask]
-    bidx = df_features['beat_idx'].values[mask]
-    order = np.argsort(bidx)          # sort chronologically
-    X_rec, y_rec, bidx = X_rec[order], y_rec[order], bidx[order]
-    cutoff = int(len(X_rec) * 0.80)
-    X_train_raw_list.append(X_rec[:cutoff])   # first 80%
-    X_test_raw_list.append(X_rec[cutoff:])    # last  20%
-\end{mintedbox}
 
 \begin{table}[H]
 \centering
@@ -373,31 +362,272 @@ Class proportions in the windowed dataset approximately reflect the temporal spl
 The PyTorch \texttt{DataLoader} wraps the windowed arrays with \texttt{batch\_size=128} and \texttt{shuffle=True} for training.
 
 % ─────────────────────────────────────────────────────────────────────────────
+
 \section{Classification Methods}
 \label{sec:methods_class}
 
-% TODO — to be filled once Tasks 3 and 4 are complete.
+\subsection{Vanilla RNN}
+
+The vanilla RNN classifier is implemented in PyTorch (\texttt{torch.nn.RNN}) with one 
+hidden layer of size 64 and a linear output layer mapping the final hidden state to 3 
+class scores (logits). The model processes each sliding window of $T=10$ beats 
+sequentially, updating a hidden state $h_t \in \mathbb{R}^{64}$ at each step:
+
+\[
+h_t = \tanh(W_x x_t + W_h h_{t-1} + b)
+\]
+
+where $x_t \in \mathbb{R}^{8}$ is the feature vector for beat $t$, $W_x$ and $W_h$ are 
+learned weight matrices, and $b$ is a bias term. Only the final hidden state $h_{10}$ 
+is passed to the linear output layer, as it summarises the entire 10-beat context.
+
+Training used cross-entropy loss weighted by inverse class frequency to penalise missed 
+S and V beats more heavily than N beats, the Adam optimiser with learning rate 
+$\text{lr} = 0.001$, and a fixed seed (\texttt{torch.manual\_seed(42)}) for 
+reproducibility. The model was trained for 20 epochs with \texttt{batch\_size} = 128.
+
+
+\subsubsection{Vanishing Gradient Problem}
+
+The vanilla RNN learns through backpropagation through time (BPTT), which traces 
+gradients back through each time step. At each step backwards, the gradient magnitude 
+is reduced by repeated multiplication of values smaller than 1 — the derivative of 
+$\tanh$ and the weight matrix $W_h$. This causes gradients to shrink exponentially with 
+sequence length, effectively giving the model ``amnesia'': the earliest beats in the 
+window receive negligible gradient updates and contribute little to learning.
+
+With $T = 10$ beats, the gradient is reduced but remains sufficient for the model to 
+learn from all 10 steps. However, for much longer sequences (e.g.\ $T = 100$), the 
+gradient signal at the earliest beats would be negligibly small, preventing learning of 
+any long-range dependency. This fundamental limitation motivates the use of LSTM, which 
+introduces a protected cell state $c_t$ that allows gradients to flow backwards without 
+vanishing.
+
+\subsection{LSTM}
+The LSTM classifier replaces \texttt{torch.nn.RNN} with \texttt{torch.nn.LSTM},
+keeping all other hyperparameters identical (hidden\_size$\,=\,$64,
+lr$\,=\,$0.001, 20 epochs, class-weighted cross-entropy, Adam) to ensure a fair
+comparison. The only structural difference is that the LSTM maintains both a
+hidden state $h_t$ and a \textbf{cell state} $c_t$ governed by three gates:
+
+\begin{align}
+f_t &= \sigma(W_f [h_{t-1}, x_t] + b_f) \quad \text{(forget gate)} \nonumber\\
+i_t &= \sigma(W_i [h_{t-1}, x_t] + b_i) \quad \text{(input gate)} \nonumber\\
+o_t &= \sigma(W_o [h_{t-1}, x_t] + b_o) \quad \text{(output gate)} \nonumber\\
+c_t &= f_t \odot c_{t-1} + i_t \odot \tanh(W_c [h_{t-1}, x_t] + b_c) \nonumber\\
+h_t &= o_t \odot \tanh(c_t) \nonumber
+\end{align}
+
+The cell state $c_t$ provides an additive path for gradients during BPTT,
+mitigating the vanishing gradient problem that limits the vanilla RNN on long
+sequences. As with the RNN, only the final hidden state $h_{10}$ is passed to
+the linear output layer.
+
 
 
 % ─────────────────────────────────────────────────────────────────────────────
 \section{Results}
 \label{sec:results}
 
-% TODO
+\subsection{RNN Training Curves}
+
+Figure~\ref{fig:rnn_curves} shows the training and validation loss and accuracy curves 
+for the vanilla RNN over 20 epochs. Both loss curves decrease smoothly and track each 
+other closely throughout training, with no sign of overfitting. The gap between training 
+accuracy (0.983 at epoch 20) and validation accuracy (0.948) is small and stable.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth]{RNN_loss_curves.png}
+    \caption{Training and Validation loss and accuracy curves.}
+    \label{fig:rnn_curves}
+\end{figure}
+
+
+
+
+\subsection{RNN Classification Performance}
+
+Table~\ref{tab:rnn_report} reports per-class metrics on the test set. The test set 
+covers records 106, 119, and 201, which are arrhythmia-rich (records 106 and 119 have 
+high V proportions of 25.7\% and 22.3\%; record 201 is the only record with a 
+meaningful number of S beats at 6.5\%), making this a harder and more realistic 
+evaluation than a random split.
+
+\begin{table}[H]
+\centering
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lrrrr}
+\toprule
+\textbf{Class} & \textbf{Precision} & \textbf{Recall} & \textbf{F1} & \textbf{Support} \\
+\midrule
+N          & 1.00 & 0.95 & 0.97 & 5{,}526 \\
+S          & 0.38 & 0.92 & 0.53 &     51 \\
+V          & 0.59 & 0.96 & 0.73 &    335 \\
+\midrule
+Accuracy   & \multicolumn{3}{r}{0.95} & 5{,}912 \\
+Macro F1   & \multicolumn{3}{r}{0.75} & \\
+Weighted F1 & \multicolumn{3}{r}{0.96} & \\
+\bottomrule
+\end{tabular}
+\caption{Vanilla RNN classification report on the test set.}
+\label{tab:rnn_report}
+\end{table}
+
+Figure~\ref{fig:rnn_cm} shows the confusion matrix. The model correctly identifies 
+96\% of ventricular beats (only 1 V beat missed out of 335) and 92\% of 
+supraventricular beats. The cost of the class-weighted loss is a reduction in N 
+precision: 290 N beats are flagged as S or V (false alarms). In a clinical monitoring 
+context, false alarms are preferable to missed ventricular beats, which could indicate 
+impending cardiac arrest.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\linewidth]{RNN_cm.png}
+    \caption{Vanilla RNN confusion matrix on the test set. The model 
+    misses only 1 V beat out of 335, at the cost of 290 false alarms on N beats.}
+    \label{fig:rnn_cm}
+\end{figure}
+
+\subsection{LSTM Classification Performance}
+The LSTM converges at a similar rate to the RNN (Figure~\ref{fig:lstm_curves}). On the same test set:
+
+\begin{itemize}[nosep]
+    \item \textbf{Accuracy}: 0.94
+    \item \textbf{Macro F1}: 0.78 \,(+0.04 vs.\ RNN)
+    \item \textbf{Weighted F1}: 0.95
+\end{itemize}
+
+\begin{table}[H]
+\centering
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lrrrr}
+\toprule
+\textbf{Class} & \textbf{Precision} & \textbf{Recall} & \textbf{F1} & \textbf{Support} \\
+\midrule
+N          & 1.00 & 0.93 & 0.97 & 5{,}526 \\
+S          & 0.64 & 0.84 & 0.73 &     51 \\
+V          & 0.49 & 0.99 & 0.65 &    335 \\
+\midrule
+Accuracy   & \multicolumn{3}{r}{0.94} & 5{,}912 \\
+Macro F1   & \multicolumn{3}{r}{0.78} & \\
+Weighted F1 & \multicolumn{3}{r}{0.95} & \\
+\bottomrule
+\end{tabular}
+\caption{LSTM classification report on the test set.}
+\label{tab:lstm_report}
+\end{table}
+
+Compared to the vanilla RNN, the LSTM trades recall for precision on
+minority classes. V-beat recall rises from 0.96 to \textbf{0.99} (only
+3 missed out of 335), while S-beat precision improves from 0.38 to
+\textbf{0.64}, reducing false S alarms. The overall macro F1 improves
+from 0.75 to \textbf{0.78}, indicating better-balanced performance
+across all three classes. The confusion matrix
+(Figure~\ref{fig:lstm_cm}) shows fewer N$\to$S
+misclassifications compared to the RNN, at the cost of slightly
+lower N recall (0.93 vs.\ 0.95).
+
+\begin{table}[H]
+\centering
+\small
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{lcccccc}
+\toprule
+\textbf{Model} & \textbf{Acc.} & \textbf{Macro F1} & \textbf{Wt.\ F1} & \textbf{Rec.\,N} & \textbf{Rec.\,S} & \textbf{Rec.\,V} \\
+\midrule
+Vanilla RNN & 0.95 & 0.75 & 0.96 & 0.95 & 0.92 & 0.96 \\
+LSTM        & 0.94 & 0.78 & 0.95 & 0.93 & 0.84 & 0.99 \\
+\bottomrule
+\end{tabular}
+\caption{RNN vs.\ LSTM comparison on the test set.}
+\label{tab:rnn_vs_lstm}
+\end{table}
+
+% ── FIGURE PLACEHOLDER ──────────────────────────────────────────────────────
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth]{task3_lstm_learning_curves.png}
+    \caption{LSTM training and validation curves over 20 epochs.}
+    \label{fig:lstm_curves}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\linewidth]{task3_lstm_confusion_matrix.png}
+    \caption{LSTM confusion matrix on the test set.}
+    \label{fig:lstm_cm}
+\end{figure}
+% ────────────────────────────────────────────────────────────────────────────
+
+
 
 
 % ─────────────────────────────────────────────────────────────────────────────
+
 \section{Discussion}
 \label{sec:discussion}
 
-% TODO
+\subsection{Effect of Class Imbalance}
 
+The dominance of N beats (94.2\%) means that overall accuracy is a poor proxy for 
+model quality on this task. More broadly, this highlights a common pitfall in 
+biomedical machine learning: optimising for accuracy on imbalanced datasets can 
+produce models that appear strong on paper while being clinically useless. In cardiac monitoring, the consequences of this failure are asymmetric — missing a ventricular 
+beat is far more dangerous than a false alarm — which is precisely why evaluation metrics and loss functions must be chosen with the clinical context in mind 
+\citep{rajpurkar2017cardiologist}.
+
+\subsection{Sequence Length and the Vanishing Gradient}
+
+The $T = 10$ window is short enough that the vanishing gradient problem does not 
+severely limit the vanilla RNN \citep{goodfellow2016deep}. Both models achieve 
+comparable overall accuracy ($\sim$0.94--0.95), and the LSTM's macro F1 advantage 
+(+0.04) comes primarily from better precision on minority classes rather than from 
+exploiting longer-range temporal dependencies. This raises an important question 
+about model selection: if the sequence is short enough for a vanilla RNN to learn 
+effectively, the added complexity of an LSTM \citep{hochreiter1997lstm} yields only 
+marginal gains. The benefit of the LSTM would become more pronounced with longer 
+sequences ($T \geq 50$), where the vanilla RNN's gradient signal degrades 
+significantly while the LSTM's cell state preserves it.
+
+\subsection{Limitations}
+
+The most significant limitation is the intra-patient split: because beats from the 
+same patient appear in both training and test sets, the model is evaluated on rhythm 
+patterns it has already partially seen. In a real deployment scenario, a model would 
+encounter entirely new patients whose baseline rhythms and arrhythmia patterns differ 
+from anything seen during training. A proper inter-patient evaluation is the standard 
+approach in published arrhythmia classification benchmarks 
+\citep{moody2001impact, rajpurkar2017cardiologist} and would provide a more honest 
+estimate of clinical generalisability.
+
+
+\subsection{RNN vs.\ LSTM Trade-offs}
+
+The two models exhibit a complementary error profile. The vanilla RNN achieves higher
+S-beat recall (0.92 vs.\ 0.84) but at the cost of many false S alarms
+(precision 0.38). The LSTM reduces these false alarms (S precision 0.64) while
+pushing V-beat recall to 0.99, missing only 3 ventricular beats out of 335.
+The LSTM's higher macro F1 (0.78 vs.\ 0.75) reflects this more balanced trade-off.
+
+In a clinical context, the choice between the two depends on the monitoring
+objective: if maximising detection of any arrhythmia is paramount (minimising
+false negatives across S and V), the RNN's higher S recall may be preferred;
+if reducing alarm fatigue while maintaining near-perfect V detection is the
+priority, the LSTM offers a better balance.
 
 % ─────────────────────────────────────────────────────────────────────────────
 \section{Conclusions}
 \label{sec:conclusions}
 
-% TODO
+We trained and compared a vanilla RNN and an LSTM on a 3-class ECG beat classification task using the MIT-BIH Arrhythmia Database. Both models were fed identical sliding-window inputs ($T{=}10$ beats $\times$ 8 features) and trained with class-weighted cross-entropy to address the severe class imbalance (94\% N, 5\% V, 1\% S).
+
+The LSTM achieved a higher macro F1 (0.78 vs.\ 0.75) by improving minority-class precision without sacrificing V-beat recall (0.99). However, the modest gap confirms that with $T{=}10$ the vanishing gradient problem does not severely limit the vanilla RNN, and the LSTM's gating mechanism provides only incremental gains at this sequence length.
+
+The main limitation is the intra-patient evaluation protocol: beats from the same patient appear in both splits, so reported metrics overestimate generalisation to unseen patients. Future work should adopt a leave-patient-out split and explore longer sequence lengths where the LSTM's advantage is expected to be more pronounced.
+
 
 
 % ─────────────────────────────────────────────────────────────────────────────
